@@ -122,8 +122,17 @@ def main(argv=None):
             port1_temp = format_temp(linearray[2], linearray[3])
             port4_door = format_doorstatus(linearray[8])
             log.info('{} {} {}'.format(node, port1_temp, port4_door))
-            c.execute("INSERT OR REPLACE INTO nodes (node_id, port1, port4) "
-                    "VALUES (?, ?, ?)", (node, port1_temp, linearray[8]))
+            # TODO:2014-02-11:teddy: deduplicate this
+            c.execute("UPDATE nodes SET port1 = ?, port4 = ? "
+                    "WHERE node_id = ?", (port1_temp, linearray[8], node))
+            if c.rowcount == 0:
+                log.info("node {} doesn't exist. creating".format(node))
+                c.execute("INSERT INTO nodes (node_id) VALUES (?)", (node))
+            c.execute("UPDATE nodes SET port1 = ?, port4 = ? "
+                    "WHERE node_id = ?", (port1_temp, linearray[8], node))
+            if c.rowcount == 0:
+                log.error("unable to update table")
+                return 1
             conn.commit()
 
 
