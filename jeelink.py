@@ -105,6 +105,7 @@ def main(argv=None):
     c.execute("SELECT 1 FROM nodes")
     while True:
         line = ser.readline()
+        log.debug(line.rstrip())
         if line[:2] == "OK":
             #line = line.rstrip()
             # format:  OK 2 33 44 55 66 77 88 99 00
@@ -115,7 +116,6 @@ def main(argv=None):
             #  port4:  99 + 00 * 256
             # Door sensors: "01 00" for open, "00 00" for close
             # Temperature: "139 9" = 139 + (9 * 254) = 2444 / 100 = 24.44C
-            log.debug(line)
             # currently temperature at port1 and door at port4
             linearray = line.split(" ")
             node = linearray[1]
