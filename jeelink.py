@@ -45,11 +45,13 @@ def _parse_opts(argv=None):
 
     """
     parser = OptionParser(version='%prog {}'.format(__version__))
-    parser.set_defaults(verbose=False)
+    parser.set_defaults(verbose=False, readonly=False)
     parser.add_option('-c', '--config', dest='config', metavar='FILE',
         help='Use config FILE (default: %default)', default='config.ini')
     parser.add_option('-v', '--verbose', dest='verbose', action='store_true',
         help='Be more verbose (default is no)')
+    parser.add_option('-r', '--read-only', dest='readonly', action='store_true',
+        help="Don't update database (useful with -v)")
     (options, args) = parser.parse_args(argv)
     return options, args
 
@@ -80,6 +82,16 @@ def format_doorstatus(int1):
     return result
 
 
+def format_lowbat(int1):
+    # First off cast them int in case sent as strings
+    int1 = int(int1)
+    if int1 == 0:
+        result = False
+    else:
+        result = True
+    return result
+
+
 def main(argv=None):
     """The main function.
 
@@ -99,17 +111,21 @@ def main(argv=None):
     options = _parse_opts(argv)[0]
     if options.verbose:
         log.setLevel(logging.DEBUG)
+    if not options.readonly:
+        conn = sqlite3.connect('jeelink-receiver.db')
+        c = conn.cursor()
+        c.execute("SELECT 1 FROM nodes")
+    else:
+        log.warning('Running in read only mode')
     ser = serial.Serial(SERIAL_PORT, 57600)
-    conn = sqlite3.connect('jeelink-receiver.db')
-    c = conn.cursor()
-    c.execute("SELECT 1 FROM nodes")
     while True:
         line = ser.readline()
         log.debug(line.rstrip())
         if line[:2] == "OK":
             #line = line.rstrip()
-            # format:  OK 2 33 44 55 66 77 88 99 00
+            # format:  OK 2 11 22 33 44 55 66 77 88 99 00
             #  node id: 2
+            #  low battery: "01 00" for low, "00 00" for ok
             #  port1:  33 + 44 * 256
             #  port2:  55 + 66 * 256
             #  port3:  77 + 88 * 256
@@ -119,21 +135,26 @@ def main(argv=None):
             # currently temperature at port1 and door at port4
             linearray = line.split(" ")
             node = linearray[1]
-            port1_temp = format_temp(linearray[2], linearray[3])
-            port4_door = format_doorstatus(linearray[8])
-            log.info('{} {} {}'.format(node, port1_temp, port4_door))
-            # TODO:2014-02-11:teddy: deduplicate this
-            c.execute("UPDATE nodes SET port1 = ?, port4 = ? "
-                    "WHERE node_id = ?", (port1_temp, linearray[8], node))
-            if c.rowcount == 0:
-                log.info("node {} doesn't exist. creating".format(node))
-                c.execute("INSERT INTO nodes (node_id) VALUES (?)", (node))
-            c.execute("UPDATE nodes SET port1 = ?, port4 = ? "
-                    "WHERE node_id = ?", (port1_temp, linearray[8], node))
-            if c.rowcount == 0:
-                log.error("unable to update table")
-                return 1
-            conn.commit()
+            lowbattery = format_lowbat(linearray[2])
+            port1_temp = format_temp(linearray[4], linearray[5])
+            port4_door = format_doorstatus(linearray[10])
+            log.info('{} {} {} {}'.format(
+                node, lowbattery, port1_temp, port4_door))
+            if not options.readonly:
+                # TODO:2014-02-11:teddy: deduplicate this
+                c.execute("UPDATE nodes SET port1 = ?, port4 = ?, "
+                    "low_battery = ? WHERE node_id = ?", (
+                        port1_temp, linearray[10], linearray[2], node))
+                if c.rowcount == 0:
+                    log.info("node {} doesn't exist. creating".format(node))
+                    c.execute("INSERT INTO nodes (node_id) VALUES (?)", (node))
+                    c.execute("UPDATE nodes SET port1 = ?, port4 = ?, "
+                        "low_battery = ? WHERE node_id = ?", (
+                            port1_temp, linearray[10], linearray[2], node))
+                if c.rowcount == 0:
+                    log.error("unable to update table")
+                    return 1
+                conn.commit()
 
 
 if __name__ == "__main__":
