@@ -1,6 +1,7 @@
 *.py[cod]
 *.db
 log.txt
+jeelink.log*
 
 # C extensions
 *.so

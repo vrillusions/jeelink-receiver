@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # vim: set fileencoding=utf-8 :
-"""Python Template.
+"""Jeelink Receiver.
 
 Environment Variables
     LOGLEVEL: overrides the level specified here. Choices are debug, info,
@@ -13,6 +13,8 @@ from __future__ import (division, absolute_import, print_function,
 import os
 import sys
 import logging
+import logging.config
+import atexit
 import sqlite3
 from optparse import OptionParser
 
@@ -23,15 +25,6 @@ __version__ = '0.1.0-dev'
 
 
 SERIAL_PORT = '/dev/ttyUSB0'
-
-
-# Logger config
-# DEBUG, INFO, WARNING, ERROR, or CRITICAL
-# This will set log level from the environment variable LOGLEVEL or default
-# to warning. You can also just hardcode the error if this is simple.
-_LOGLEVEL = getattr(logging, os.getenv('LOGLEVEL', 'WARNING').upper())
-_LOGFORMAT = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-logging.basicConfig(level=_LOGLEVEL, format=_LOGFORMAT)
 
 
 def _parse_opts(argv=None):
@@ -92,6 +85,13 @@ def format_lowbat(int1):
     return result
 
 
+def _serial_cleanup(ser=None):
+    log = logging.getLogger()
+    log.debug("Closing serial port")
+    if ser:
+        ser.close()
+
+
 def main(argv=None):
     """The main function.
 
@@ -103,7 +103,14 @@ def main(argv=None):
     :rtype: int
 
     """
+    _loglevel = getattr(logging, os.getenv('LOGLEVEL', 'INFO').upper())
+    _logformat = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    logging.config.fileConfig('logging.ini')
+    _console_handler = logging.StreamHandler()
+    _console_handler.setFormatter(logging.Formatter(_logformat))
+    _console_handler.setLevel(_loglevel)
     log = logging.getLogger()
+    log.addHandler(_console_handler)
     if argv is None:
         argv = sys.argv
     #(options, args) = _parse_opts(argv[1:])
@@ -111,6 +118,7 @@ def main(argv=None):
     options = _parse_opts(argv)[0]
     if options.verbose:
         log.setLevel(logging.DEBUG)
+        _console_handler.setLevel(logging.DEBUG)
     if not options.readonly:
         conn = sqlite3.connect('jeelink-receiver.db')
         c = conn.cursor()
@@ -118,9 +126,12 @@ def main(argv=None):
     else:
         log.warning('Running in read only mode')
     ser = serial.Serial(SERIAL_PORT, 57600)
+    atexit.register(_serial_cleanup, ser)
+    log.info("Initial startup successful. Monitoring JeeLink.")
     while True:
         line = ser.readline()
         log.debug(line.rstrip())
+        linearray  = line.split(" ")
         if line[:2] == "OK":
             #line = line.rstrip()
             # format:  OK 2 11 22 33 44 55 66 77 88 99 00
@@ -133,12 +144,11 @@ def main(argv=None):
             # Door sensors: "01 00" for open, "00 00" for close
             # Temperature: "139 9" = 139 + (9 * 254) = 2444 / 100 = 24.44C
             # currently temperature at port1 and door at port4
-            linearray = line.split(" ")
             node = linearray[1]
             lowbattery = format_lowbat(linearray[2])
             port1_temp = format_temp(linearray[4], linearray[5])
             port4_door = format_doorstatus(linearray[10])
-            log.info('{} {} {} {}'.format(
+            log.info('node={} low_battery={} temperature={} door={}'.format(
                 node, lowbattery, port1_temp, port4_door))
             if not options.readonly:
                 # TODO:2014-02-11:teddy: deduplicate this
@@ -155,6 +165,22 @@ def main(argv=None):
                     log.error("unable to update table")
                     return 1
                 conn.commit()
+        elif line[:2] == "DF":
+            # Dataflash message - currently just mention the store markers:
+            #  DF S 42 8 123
+            #       ^  ^--^---- 16 bit checksum
+            #       \---------- memory page just finished
+            if linearray[1] == "S":
+                log.info('DataFlash: Store: page={}'.format(linearray[2]))
+        elif line[:2] == " A":
+            # Current config printed at startup
+            #  A i1 g100 @ 915 MHz
+            #    node_id network_group @ mhz_band MHz
+            jeelink_id = linearray[2].lstrip('i')
+            group = linearray[3].lstrip('g')
+            mhz = linearray[5]
+            log.info('Jeelink Configuration: node={} group={} freq={}'.format(
+                jeelink_id, group, mhz))
 
 
 if __name__ == "__main__":
