@@ -1,0 +1,14 @@
+PRAGMA foreign_keys=OFF;
+BEGIN TRANSACTION;
+CREATE TABLE nodes (node_id int PRIMARY KEY, port1 REAL, port2 REAL, port3 REAL, port4 REAL, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at TEXT, low_battery REAL);
+CREATE TRIGGER nodes_updated_at AFTER UPDATE ON nodes
+  FOR EACH ROW
+  BEGIN
+  UPDATE nodes SET updated_at = CURRENT_TIMESTAMP WHERE node_id = old.node_id;
+END;
+CREATE TRIGGER nodes_updated_at_insert AFTER INSERT ON nodes
+  FOR EACH ROW
+  BEGIN
+  UPDATE nodes SET updated_at = CURRENT_TIMESTAMP WHERE node_id = new.node_id;
+END;
+COMMIT;
