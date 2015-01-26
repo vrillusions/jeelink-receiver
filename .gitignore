@@ -1,7 +1,5 @@
 *.py[cod]
-*.db
-log.txt
-jeelink.log*
+*.sqlite3
 
 # C extensions
 *.so
@@ -18,8 +16,6 @@ var
 sdist
 develop-eggs
 .installed.cfg
-lib
-lib64
 __pycache__
 
 # Installer logs

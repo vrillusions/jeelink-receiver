@@ -20,6 +20,8 @@ from optparse import OptionParser
 
 import serial
 
+from lib.utcformatter import UTCFormatter
+
 
 __version__ = '0.1.0-dev'
 
@@ -38,13 +40,17 @@ def _parse_opts(argv=None):
 
     """
     parser = OptionParser(version='%prog {}'.format(__version__))
-    parser.set_defaults(verbose=False, readonly=False)
+    parser.set_defaults(
+        verbose=False, readonly=False, config='config.ini',
+        db_name='jeelink-receiver.sqlite3')
     parser.add_option('-c', '--config', dest='config', metavar='FILE',
-        help='Use config FILE (default: %default)', default='config.ini')
+        help='Use config FILE (default: %default)')
     parser.add_option('-v', '--verbose', dest='verbose', action='store_true',
         help='Be more verbose (default is no)')
     parser.add_option('-r', '--read-only', dest='readonly', action='store_true',
         help="Don't update database (useful with -v)")
+    parser.add_option('-d', '--db-name', dest='db_name', metavar='FILE',
+        help="Use database FILE (default: %default)")
     (options, args) = parser.parse_args(argv)
     return options, args
 
@@ -104,10 +110,10 @@ def main(argv=None):
 
     """
     _loglevel = getattr(logging, os.getenv('LOGLEVEL', 'INFO').upper())
-    _logformat = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    _logformat = "%(asctime)sZ - %(name)s - %(levelname)s - %(message)s"
     logging.config.fileConfig('logging.ini')
     _console_handler = logging.StreamHandler()
-    _console_handler.setFormatter(logging.Formatter(_logformat))
+    _console_handler.setFormatter(UTCFormatter(_logformat))
     _console_handler.setLevel(_loglevel)
     log = logging.getLogger()
     log.addHandler(_console_handler)
@@ -120,7 +126,7 @@ def main(argv=None):
         log.setLevel(logging.DEBUG)
         _console_handler.setLevel(logging.DEBUG)
     if not options.readonly:
-        conn = sqlite3.connect('jeelink-receiver.db')
+        conn = sqlite3.connect(options.db_name)
         c = conn.cursor()
         c.execute("SELECT 1 FROM nodes")
     else:
