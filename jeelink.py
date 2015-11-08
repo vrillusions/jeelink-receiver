@@ -71,6 +71,19 @@ def format_temp(int1, int2):
     return result
 
 
+def format_humidity(int1, int2):
+    # First off cast them int in case sent as strings
+    int1 = int(int1)
+    int2 = int(int2)
+    result = int1 + (int2 << 8)
+    # Divide by 100 to get actual percentage
+    # PY2 note: make sure you import division from __future__
+    result = result / 100
+    # Only want max 2 decimal precision
+    result = round(result, 2)
+    return result
+
+
 def format_doorstatus(int1):
     # First off cast them int in case sent as strings
     int1 = int(int1)
@@ -78,6 +91,16 @@ def format_doorstatus(int1):
         result = "CLOSED"
     else:
         result = "OPEN"
+    return result
+
+
+def format_waterstatus(int1):
+    # First off cast them int in case sent as strings
+    int1 = int(int1)
+    if int1 == 0:
+        result = "DRY"
+    else:
+        result = "WET"
     return result
 
 
@@ -150,27 +173,53 @@ def main(argv=None):
             # Door sensors: "01 00" for open, "00 00" for close
             # Temperature: "139 9" = 139 + (9 * 254) = 2444 / 100 = 24.44C
             # currently temperature at port1 and door at port4
-            node = linearray[1]
-            lowbattery = format_lowbat(linearray[2])
-            port1_temp = format_temp(linearray[4], linearray[5])
-            port4_door = format_doorstatus(linearray[10])
-            log.info('node={} low_battery={} temperature={} door={}'.format(
-                node, lowbattery, port1_temp, port4_door))
-            if not options.readonly:
-                # TODO:2014-02-11:teddy: deduplicate this
-                c.execute("UPDATE nodes SET port1 = ?, port4 = ?, "
-                    "low_battery = ? WHERE node_id = ?", (
-                        port1_temp, linearray[10], linearray[2], node))
-                if c.rowcount == 0:
-                    log.info("node {} doesn't exist. creating".format(node))
-                    c.execute("INSERT INTO nodes (node_id) VALUES (?)", (node))
+            node = int(linearray[1])
+            if node == 2:
+                lowbattery = format_lowbat(linearray[2])
+                port1_temp = format_temp(linearray[4], linearray[5])
+                port4_door = format_doorstatus(linearray[10])
+                log.info('node={} low_battery={} temperature={} door={}'.format(
+                    node, lowbattery, port1_temp, port4_door))
+                if not options.readonly:
+                    # TODO:2014-02-11:teddy: deduplicate this
                     c.execute("UPDATE nodes SET port1 = ?, port4 = ?, "
                         "low_battery = ? WHERE node_id = ?", (
                             port1_temp, linearray[10], linearray[2], node))
-                if c.rowcount == 0:
-                    log.error("unable to update table")
-                    return 1
-                conn.commit()
+                    if c.rowcount == 0:
+                        log.info("node {} doesn't exist. creating".format(node))
+                        c.execute("INSERT INTO nodes (node_id) VALUES (?)", (str(node)))
+                        c.execute("UPDATE nodes SET port1 = ?, port4 = ?, "
+                            "low_battery = ? WHERE node_id = ?", (
+                                port1_temp, linearray[10], linearray[2], node))
+                    if c.rowcount == 0:
+                        log.error("unable to update table")
+                        return 1
+                    conn.commit()
+            elif node == 3:
+                lowbattery = format_lowbat(linearray[2])
+                port1_humi = format_humidity(linearray[4], linearray[5])
+                port2_temp = format_temp(linearray[6], linearray[7])
+                port4_water = format_waterstatus(linearray[10])
+                log.info('node={} low_battery={} humidity={} temperature={} water={}'.format(
+                    node, lowbattery, port1_humi, port2_temp, port4_water))
+                if not options.readonly:
+                    # TODO:2014-02-11:teddy: deduplicate this
+                    c.execute("UPDATE nodes SET port1 = ?, port2 = ?, port4 = ?, "
+                        "low_battery = ? WHERE node_id = ?", (
+                            port1_humi, port2_temp, linearray[10], linearray[2], node))
+                    if c.rowcount == 0:
+                        log.info("node {} doesn't exist. creating".format(node))
+                        c.execute("INSERT INTO nodes (node_id) VALUES (?)", (str(node)))
+                        c.execute("UPDATE nodes SET port1 = ?, port2 = ?, port4 = ?, "
+                            "low_battery = ? WHERE node_id = ?", (
+                                port1_humi, port2_temp, linearray[10], linearray[2], node))
+                    if c.rowcount == 0:
+                        log.error("unable to update table")
+                        return 1
+                    conn.commit()
+            else:
+                log.warn("Received data for unknown node %i" % node)
+                continue
         elif line[:2] == "DF":
             # Dataflash message - currently just mention the store markers:
             #  DF S 42 8 123

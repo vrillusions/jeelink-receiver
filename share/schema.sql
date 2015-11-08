@@ -1,3 +1,4 @@
+PRAGMA journal_mode=WAL;
 PRAGMA foreign_keys=OFF;
 BEGIN TRANSACTION;
 CREATE TABLE nodes (
