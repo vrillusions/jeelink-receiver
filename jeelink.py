@@ -118,6 +118,7 @@ def _serial_cleanup(ser=None):
     log = logging.getLogger()
     log.debug("Closing serial port")
     if ser:
+        log.debug(dir(ser))
         ser.close()
 
 
@@ -164,6 +165,8 @@ def main(argv=None):
         if line[:2] == "OK":
             #line = line.rstrip()
             # format:  OK 2 11 22 33 44 55 66 77 88 99 00
+            # format if jeelink is configured for group 0 (any group):
+            #    OK G100 2 11 22 33 44 55 66 77 88 99 00
             #  node id: 2
             #  low battery: "01 00" for low, "00 00" for ok
             #  port1:  33 + 44 * 256
