@@ -160,8 +160,8 @@ def main(argv=None):
     while True:
         line = ser.readline()
         log.debug(line.rstrip())
-        linearray  = line.split(" ")
-        if line[:2] == "OK":
+        linearray  = line.split()
+        if line[:2] == b"OK":
             #line = line.rstrip()
             # format:  OK 2 11 22 33 44 55 66 77 88 99 00
             #  node id: 2
@@ -220,19 +220,19 @@ def main(argv=None):
             else:
                 log.warn("Received data for unknown node %i" % node)
                 continue
-        elif line[:2] == "DF":
+        elif line[:2] == b"DF":
             # Dataflash message - currently just mention the store markers:
             #  DF S 42 8 123
             #       ^  ^--^---- 16 bit checksum
             #       \---------- memory page just finished
             if linearray[1] == "S":
                 log.info('DataFlash: Store: page={}'.format(linearray[2]))
-        elif line[:2] == " A":
+        elif line[:2] == b" A":
             # Current config printed at startup
             #  A i1 g100 @ 915 MHz
             #    node_id network_group @ mhz_band MHz
-            jeelink_id = linearray[2].lstrip('i')
-            group = linearray[3].lstrip('g')
+            jeelink_id = linearray[2].lstrip(b'i')
+            group = linearray[3].lstrip(b'g')
             mhz = linearray[5]
             log.info('Jeelink Configuration: node={} group={} freq={}'.format(
                 jeelink_id, group, mhz))

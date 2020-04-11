@@ -1,0 +1,46 @@
+# Valid values:
+# This is with the message format of:
+#   OK 2 <battery status> <port1> <port2> <port3> <port4>
+# where each <> is a two byte word
+# temperature    - Temperature in celsius, Take value * .01 to convert back to float
+# humidity       - Relative humidity, Take value * .01 to convert back to float
+# door_open      - Door sensor where a 1 means door is open
+# water_detected - Water sensor where a 1 means water detected
+[serial]
+port: /dev/ttyUSB0
+baudrate: 57600
+
+[influxdb]
+host:
+db_name: jeelink
+
+[node2]
+location: garage
+port1: temperature
+port4: door_open
+
+[node3]
+location: basement
+port1: humidity
+port2: temperature
+port3: water_detected
+
+# .01 means multiply int (ex 1234) by .01 (result: 12.34)
+[temperature]
+type: int2float
+offset: .01
+
+# .01 means multiply int (ex 1234) by .01 (result: 12.34)
+[humidity]
+type: int2float
+offset: .01
+
+# 0 = false = door closed
+# 1 - true = door open
+[door_open]
+type: boolean
+
+# 0 = false = no water detected
+# 1 = true = water detected
+[water_detected]
+type: boolean
