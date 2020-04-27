@@ -1,0 +1,21 @@
+# Valid values:
+# This is with the message format of:
+#   OK 2 <battery status> <port1> <port2> <port3> <port4>
+# where each <> is a two byte word
+# temperature    - Temperature in celsius, Take value * .01 to convert back to float
+# humidity       - Relative humidity, Take value * .01 to convert back to float
+# door_open      - Door sensor where a 1 means door is open
+# water_detected - Water sensor where a 1 means water detected
+[serial]
+port: /dev/ttyUSB0
+baudrate: 57600
+
+[influxdb]
+host: docker-hostname
+port: 8086
+db_name: jeenode
+
+[node2]
+location: Your Place
+port1: temperature
+port2: humidity

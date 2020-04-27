@@ -1,1 +1,15 @@
-pyserial==2.7
+aiocontextvars==0.2.2
+appdirs==1.4.3
+certifi==2020.4.5.1
+chardet==3.0.4
+contextvars==2.4
+idna==2.9
+immutables==0.11
+influxdb==5.2.3
+loguru==0.4.1
+pyserial==3.4
+python-dateutil==2.8.1
+pytz==2019.3
+requests==2.23.0
+six==1.14.0
+urllib3==1.25.8
