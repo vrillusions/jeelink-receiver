@@ -11,36 +11,11 @@ port: /dev/ttyUSB0
 baudrate: 57600
 
 [influxdb]
-host:
-db_name: jeelink
+host: docker-hostname
+port: 8086
+db_name: jeenode
 
 [node2]
-location: garage
+location: Your Place
 port1: temperature
-port4: door_open
-
-[node3]
-location: basement
-port1: humidity
-port2: temperature
-port3: water_detected
-
-# .01 means multiply int (ex 1234) by .01 (result: 12.34)
-[temperature]
-type: int2float
-offset: .01
-
-# .01 means multiply int (ex 1234) by .01 (result: 12.34)
-[humidity]
-type: int2float
-offset: .01
-
-# 0 = false = door closed
-# 1 - true = door open
-[door_open]
-type: boolean
-
-# 0 = false = no water detected
-# 1 = true = water detected
-[water_detected]
-type: boolean
+port2: humidity

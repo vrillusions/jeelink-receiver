@@ -6,6 +6,8 @@
 /.python-version
 /config.ini
 
+*.code-workspace
+
 # C extensions
 *.so
 
