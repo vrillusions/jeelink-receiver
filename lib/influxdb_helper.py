@@ -21,24 +21,24 @@ class InfluxDBHelper():
             logger.error(f'requests.exceptions.ConnectionError: {exc}')
         pass
 
-    def add_sensor_data(self, sensor_data, measurement='sensor'):
-        logger.trace(f'sensor_data: {sensor_data}')
-        location = sensor_data.pop('location')
-        events = sensor_data.pop('events')
+    def add_node_data(self, node_data, measurement='node'):
+        logger.trace(f'node_data: {node_data}')
+        location = node_data.pop('location')
+        events = node_data.pop('events')
         points = [
             {
                 "measurement": measurement,
                 "tags": {"location": location},
-                "fields": sensor_data,
+                "fields": node_data,
             }]
         if len(events) > 0:
-            self.add_events(location, sensor_data, events)
+            self.add_events(location, node_data, events)
         self._write_points(points)
 
-    def add_events(self, location, sensor_data, events, measurement='events'):
+    def add_events(self, location, node_data, events, measurement='events'):
         points = []
         logger.trace(f'events: {events}')
-        # bug: if both a door status and water sensor in same sensor only one
+        # bug: if both a door status and water sensor in same node only one
         # event will be created (this was original in a loop)
         if 'door_open' in events:
             sensor = 'door_open'

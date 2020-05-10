@@ -72,7 +72,7 @@ def parse_sensor(sensor):
         return
     parsed = {
         "location": config[node_section]['location'],
-        "low_battery": bool(sensor['lowbatt']),
+        "low_battery": int(sensor['lowbatt']),
         "events": {},
     }
     for i in range(1,5):
@@ -86,8 +86,7 @@ def parse_sensor(sensor):
                 # sending over so change it back
                 parsed[port_type] = round(sensor[port_name] * .01, 2)
             elif port_type in ['door_open', 'water_detected']:
-                parsed[port_type] = bool(sensor[port_name])
-                parsed[f'{port_type}_int'] = int(sensor[port_name])
+                parsed[port_type] = int(sensor[port_name])
                 parsed['events'][port_type] = bool(sensor[port_name])
             else:
                 parsed[f'{port_name}_value'] = sensor[port_name]
@@ -149,7 +148,7 @@ def main(args=None):
                 parsed = parse_sensor(sensor)
                 logger.info(parsed)
                 if not args.readonly:
-                    idb.add_sensor_data(parsed)
+                    idb.add_node_data(parsed)
             elif line_bytes[0] == b'DF':
                 # dataflash line
                 if line_bytes[1] == b'S':
