@@ -9,8 +9,9 @@ from requests.exceptions import ConnectionError
 
 class InfluxDBHelper():
     def __init__(self, hostname, database, port=8086, user=None, password=None):
-        logger.trace(f'Initiating InfluxDB connection to {hostname}:{port}')
-        self.client = InfluxDBClient(hostname, port, user, password, database)
+        logger.debug(f'Initiating InfluxDB connection to {hostname}:{port}')
+        self.client = InfluxDBClient(
+                hostname, port, user, password, database, timeout=20, retries=3)
 
     def _write_points(self, points, retention_policy=None):
         logger.trace(f'Sending request {points}')
@@ -19,7 +20,8 @@ class InfluxDBHelper():
         except ConnectionError as exc:
             # Likely server is offline temporarily. Just log it and continue
             logger.error(f'requests.exceptions.ConnectionError: {exc}')
-        pass
+            pass
+        logger.debug('Wrote data to InfluxDB successfully')
 
     def add_node_data(self, node_data, measurement='node'):
         logger.trace(f'node_data: {node_data}')
@@ -81,7 +83,12 @@ class InfluxDBHelper():
             "sensor": sensor,
         }
         query = 'SELECT status FROM forever.events WHERE location=$location AND sensor=$sensor ORDER BY time DESC LIMIT 1;'
-        response = self.client.query(query, bind_params=bind_params)
+        try:
+            response = self.client.query(query, bind_params=bind_params)
+        except ConnectionError as exc:
+            # Likely server is offline temporarily. Just log it and continue
+            logger.error(f'requests.exceptions.ConnectionError: {exc}')
+            return None
         result = list(response.get_points())
         logger.trace(f'result: {result}')
         if len(result) > 0:

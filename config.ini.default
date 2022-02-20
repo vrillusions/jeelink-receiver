@@ -11,11 +11,24 @@ port: /dev/ttyUSB0
 baudrate: 57600
 
 [influxdb]
-host: docker-hostname
+host: influxdb-hostname
 port: 8086
-db_name: jeenode
+db_name: jeelink
 
 [node2]
-location: Your Place
+location: garage
+port1: temperature
+port2: humidity
+port4: door_open
+
+[node3]
+location: basement
+port1: temperature
+port2: humidity
+port3: water_detected
+
+[node30]
+report: False
+location: testing
 port1: temperature
 port2: humidity

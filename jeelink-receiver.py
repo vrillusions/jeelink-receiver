@@ -68,13 +68,17 @@ def parse_sensor(sensor):
     config = Config()
     node_section = 'node{}'.format(sensor['node'])
     if not config.has_section(node_section):
-        logger.error('section [{}] does not exist'.format(node_section))
+        logger.warn('section [{}] does not exist'.format(node_section))
         return
     parsed = {
         "location": config[node_section]['location'],
         "low_battery": int(sensor['lowbatt']),
         "events": {},
     }
+    if 'report' in config[node_section]:
+        parsed['report'] = config.getboolean(node_section, 'report')
+    else:
+        parsed['report'] = True
     for i in range(1,5):
         port_name = f'port{i}'
         # XXX: Current limitation is if two ports serve the same purpose (two
@@ -147,7 +151,9 @@ def main(args=None):
                 logger.debug(sensor)
                 parsed = parse_sensor(sensor)
                 logger.info(parsed)
-                if not args.readonly:
+                if not args.readonly and parsed['report']:
+                    # remove 'report' or else it will send that to influxdb
+                    parsed.pop('report', None)
                     idb.add_node_data(parsed)
             elif line_bytes[0] == b'DF':
                 # dataflash line
